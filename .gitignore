@@ -1,6 +1,10 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+
+mlruns
+mlartifacts
+
 build/
 dist/
 wheels/
