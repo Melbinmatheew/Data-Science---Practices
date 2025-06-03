@@ -1,0 +1,7 @@
+ipykernel>=6.29.5,
+kagglehub>=0.3.12,
+lightgbm>=4.6.0,
+numpy>=2.2.6,
+pandas>=2.2.3,
+skorch>=1.1.0,
+xgboost>=3.0.2
