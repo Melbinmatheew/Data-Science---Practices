@@ -1,0 +1,17 @@
+house_price_pipeline/
+│
+├── main_stage1_tune.py         # Train + tune + save models
+├── main_stage2_evaluate.py     # Load + evaluate models
+│
+├── config/
+│   └── model_configs.py        # Models + param grids
+│
+├── pipeline/
+│   ├── preprocess.py           # Preprocessing pipeline
+│   └── trainer.py              # Stage 1 logic: tuning + saving
+│
+├── registry/
+│   └── (model_name).pkl        # Saved best models
+│
+└── utils/
+    └── evaluation.py           # Metrics + model comparison
