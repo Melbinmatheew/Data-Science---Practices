@@ -5,11 +5,14 @@ __pycache__/
 mlruns
 mlartifacts
 
+
 build/
 dist/
 wheels/
 *.egg-info
 *.csv
+*.toml
+*python-version
 
 # Virtual environments
 .venv
