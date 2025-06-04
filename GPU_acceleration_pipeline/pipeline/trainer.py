@@ -6,6 +6,7 @@ import joblib
 import os
 from pipeline.preprocess import build_preprocessor # Assuming this path is correct
 import mlflow
+from mlflow.tracking import MlflowClient
 import pandas as pd # Ensure pandas is imported if used for type checking
 import numpy as np # Ensure numpy is imported for y.values
 
@@ -57,38 +58,45 @@ def train_and_save_model(X_orig, y_orig, model_name, model, params): # Use X_ori
         pipe, 
         params, 
         cv=3, 
-        n_jobs=1,  # Use 1 for GPU models to avoid conflicts
+        n_jobs=1,
         scoring='neg_root_mean_squared_error',
         verbose=1
     )
-    
+
     start_time = time.time()
-    # Fit uses the X and y defined in this function scope.
-    # For PyTorch, X's numeric parts and y are float32.
-    # For others, they are original dtypes.
-    grid.fit(X, y) 
+    grid.fit(X, y)
     end_time = time.time()
-    
-    print(f"Training for {model_name} completed in {end_time - start_time:.2f} seconds")
-    
-    if torch.cuda.is_available() and model_name == "PyTorchRegressor": # Check memory specifically after PyTorch
-        print(f"PyTorch GPU Memory after training {model_name}: {torch.cuda.memory_allocated()/1024**2:.1f} MB")
-        # Consider torch.cuda.empty_cache() here if memory needs to be freed for other PyTorch models,
-        # though with separate model loops, it might not be strictly necessary.
-    
+
     best_model = grid.best_estimator_
     os.makedirs("registry", exist_ok=True)
-    path = f"registry/{model_name}.pkl"
-    joblib.dump(best_model, path)
-    
-    # Log to MLflow
-    with mlflow.start_run(run_name=f"Tuned_{model_name}"):
+    local_path = f"registry/{model_name}.pkl"
+    joblib.dump(best_model, local_path)
+
+    # === MLflow Logging & Registration ===
+    with mlflow.start_run(run_name=f"Tuned_{model_name}") as run:
+        run_id = run.info.run_id
+
+        # 1. Log parameters and metrics
         mlflow.log_params(grid.best_params_)
-        mlflow.sklearn.log_model(sk_model=best_model, artifact_path="model") # Use sk_model for clarity
-        mlflow.log_metric("best_score_rmse", -grid.best_score_) # Clarify metric name
-        mlflow.log_metric("training_time_seconds", end_time - start_time) # Clarify metric name
-    
+        mlflow.log_metric("best_score_rmse", -grid.best_score_)
+        mlflow.log_metric("training_time_seconds", end_time - start_time)
+        mlflow.set_tag("model_name", model_name)
+
+        # 2. Log model
+        mlflow.sklearn.log_model(sk_model=best_model, artifact_path="model")
+
+        # 3. Register model
+        model_uri = f"runs:/{run_id}/model"
+        registered_model_name = f"{model_name}_regressor"
+
+        client = MlflowClient()
+        try:
+            model_details = client.register_model(model_uri=model_uri, name=registered_model_name)
+            print(f"✓ Model registered: {registered_model_name} (version {model_details.version})")
+        except Exception as e:
+            print(f"✗ Failed to register model: {e}")
+
     print(f"Best parameters for {model_name}: {grid.best_params_}")
-    print(f"Best RMSE for {model_name}: {-grid.best_score_:.4f}") # Clarify score
+    print(f"Best RMSE for {model_name}: {-grid.best_score_:.4f}")
     
-    return path
+    return local_path
