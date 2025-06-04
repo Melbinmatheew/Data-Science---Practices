@@ -33,5 +33,6 @@ def build_preprocessor(X: pd.DataFrame) -> Pipeline:
         ("cat",categorical_transformer, cat_col )
 
     ])
-
+    
+    preprocessor.set_output(transform="pandas")
     return preprocessor
